@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 
@@ -52,7 +53,7 @@ void setup(char inputBuffer[], char *args[],int *background)
 		    start = i;
 		if (inputBuffer[i] == '&'){
 		    *background = 1;
-		    inputBuffer[i] = '\0';ECSE 427/COMP 310 Fall 2014
+		    inputBuffer[i] = '\0';
 		}
 	} 
     } 
@@ -78,11 +79,11 @@ int main(void)
 	pid_t pid = fork();	
 	if (pid == 0) {
 	    // check for &
-	    if (arg[args.size - 1].equals("&")) {
-		char *temp[args.size() - 2];
-		for (int i = 1; i < temp.size; i++) {
-		    temp[i] = args[i];
-		}
+	    char *temp[MAX_LINE + 1];
+	    int i = 1;
+	    while (i < MAX_LINE && args[i] != "\0" & args[i] != "&") {
+	        temp[i] = args[i];
+		i++;
 	    }
 	    execvp(args[0], temp);
 	} else if (background == 1) {
