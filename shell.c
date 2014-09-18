@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 
@@ -62,7 +63,7 @@ int main(void)
 {
     char inputBuffer[MAX_LINE]; /* buffer to hold the command entered */
     int background; /* equals 1 if a command is followed by '&' */
-    char *args[MAX_LINE/+1]; /* command line (of 80) has max of 40 arguments */
+    char *args[MAX_LINE+1]; /* command line (of 80) has max of 40 arguments */
 
     while (1) { /* Program terminates normally inside setup */
 	background = 0;
@@ -73,5 +74,19 @@ int main(void)
 	   (2) the child process will invoke execvp()
 	   (3) if background == 1, the parent will wait, 
 	   otherwise returns to the setup() function. */
+
+	pid_t pid = fork();	
+	if (pid == 0) {
+	    // check for &
+	    if (arg[args.size - 1].equals("&")) {
+		char *temp[args.size() - 2];
+		for (int i = 1; i < temp.size; i++) {
+		    temp[i] = args[i];
+		}
+	    }
+	    execvp(args[0], temp);
+	} else if (background == 1) {
+	    // 2
+	}
     }
 }
