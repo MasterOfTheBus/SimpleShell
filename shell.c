@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <stdlib.h>
+#include <wait.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 
@@ -33,29 +34,29 @@ void setup(char inputBuffer[], char *args[],int *background)
 	switch (inputBuffer[i]){
 	    case ' ':
 	    case '\t' : /* argument separators */
-		if(start != -1){
-		    args[ct] = &inputBuffer[start]; /* set up pointer */
-		    ct++;
-		}
-		inputBuffer[i] = '\0'; /* add a null char; make a C string */
-		start = -1;
-		break;
+		    if(start != -1){
+		        args[ct] = &inputBuffer[start]; /* set up pointer */
+		        ct++;
+		    }
+		    inputBuffer[i] = '\0'; /* add a null char; make a C string */
+		    start = -1;
+		    break;
 	    case '\n': /* should be the final char examined */
-		if (start != -1){
-		    args[ct] = &inputBuffer[start]; 
-		    ct++;
-		}
-		inputBuffer[i] = '\0';
-		args[ct] = NULL; /* no more arguments to this command */
-		break;
-	    default : /* some other character */
-		if (start == -1)
-		    start = i;
-		if (inputBuffer[i] == '&'){
-		    *background = 1;
+		    if (start != -1){
+		        args[ct] = &inputBuffer[start]; 
+		        ct++;
+		    }
 		    inputBuffer[i] = '\0';
-		}
-	} 
+		    args[ct] = NULL; /* no more arguments to this command */
+		    break;
+	    default : /* some other character */
+		    if (start == -1)
+		        start = i;
+		    if (inputBuffer[i] == '&'){
+		        *background = 1;
+		        inputBuffer[i] = '\0';
+		    }
+	    }
     } 
     args[ct] = NULL; /* just in case the input line was > 80 */
 } 
@@ -65,6 +66,9 @@ int main(void)
     char inputBuffer[MAX_LINE]; /* buffer to hold the command entered */
     int background; /* equals 1 if a command is followed by '&' */
     char *args[MAX_LINE+1]; /* command line (of 80) has max of 40 arguments */
+    int MAX_HISTORY = 10;
+    char *history[MAX_HISTORY];
+    int historyIndex = 0;
 
     while (1) { /* Program terminates normally inside setup */
 	background = 0;
@@ -75,19 +79,56 @@ int main(void)
 	   (2) the child process will invoke execvp()
 	   (3) if background == 1, the parent will wait, 
 	   otherwise returns to the setup() function. */
-
+    // filter for &
+/*    int i = 0;
+    char *filtered[MAX_LINE + 1];
+    while (i < MAX_LINE) {
+        if (args[i] && args[i] == "-lart") {
+            printf("found");
+        }
+        filtered[i] = args[i];
+        i++;
+    }
+*/
 	pid_t pid = fork();	
 	if (pid == 0) {
-	    // check for &
-	    char *temp[MAX_LINE + 1];
-	    int i = 1;
-	    while (i < MAX_LINE && args[i] != "\0" & args[i] != "&") {
-	        temp[i] = args[i];
-		i++;
-	    }
-	    execvp(args[0], temp);
+        if (args[0] == "r") {
+            // history part
+            if (args[1] != 0) {
+                
+            }
+        } else {
+	        // check for &
+            int i = 1;
+/*        if (background) {
+            fprintf(stderr, "the & was used\n");
+        }*/
+            while (i < MAX_LINE && args[i] != 0) {
+           /* if (args[i] == '\0') {
+                fprintf(stderr, "the \\0 char\n");
+            } else {
+                fprintf(stderr, "args: %s\n", args[i]);
+            }*/
+                i++;
+            }
+            char *options[i-1];
+            int j = 0;
+            int numOpt = (background) ? (i-2) : (i-1);
+            while (j < numOpt) {
+                options[j] = args[j+1];
+                //fprintf(stderr, "option: %s\n", options[j]);
+                j++;
+            }
+            j = 0;
+            while (j < i-1) {
+                fprintf(stderr, "option: %s\n", options[j]);
+                j++;
+            }
+	        execvp(args[0], args);//options);
+        }
 	} else if (background == 1) {
-	    // 2
+        //int status;
+        //waitpid(pid, &status, 0);
 	}
     }
 }
