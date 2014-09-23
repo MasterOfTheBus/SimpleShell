@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <wait.h>
+#include <string.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 
@@ -68,7 +69,7 @@ int main(void)
     char *args[MAX_LINE+1]; /* command line (of 80) has max of 40 arguments */
     int MAX_HISTORY = 10;
     char *history[MAX_HISTORY];
-    int historyIndex = 0;
+    int historyCount = 0;
 
     while (1) { /* Program terminates normally inside setup */
 	background = 0;
@@ -79,17 +80,6 @@ int main(void)
 	   (2) the child process will invoke execvp()
 	   (3) if background == 1, the parent will wait, 
 	   otherwise returns to the setup() function. */
-    // filter for &
-/*    int i = 0;
-    char *filtered[MAX_LINE + 1];
-    while (i < MAX_LINE) {
-        if (args[i] && args[i] == "-lart") {
-            printf("found");
-        }
-        filtered[i] = args[i];
-        i++;
-    }
-*/
 	pid_t pid = fork();	
 	if (pid == 0) {
         if (args[0] == "r") {
@@ -98,33 +88,36 @@ int main(void)
                 
             }
         } else {
-	        // check for &
-            int i = 1;
-/*        if (background) {
-            fprintf(stderr, "the & was used\n");
-        }*/
+	        // Only get the actual arguments
+            int i = 0;
             while (i < MAX_LINE && args[i] != 0) {
-           /* if (args[i] == '\0') {
-                fprintf(stderr, "the \\0 char\n");
-            } else {
-                fprintf(stderr, "args: %s\n", args[i]);
-            }*/
                 i++;
             }
-            char *options[i-1];
+
+            // save the command to history
+            char command[MAX_LINE + 1];
+            strcpy(command, "");
+
+            int numOpt = (background) ? (i) : (i+1);
+            char *options[numOpt];
             int j = 0;
-            int numOpt = (background) ? (i-2) : (i-1);
-            while (j < numOpt) {
-                options[j] = args[j+1];
-                //fprintf(stderr, "option: %s\n", options[j]);
+            while (j < i) {
+                options[j] = args[j];
+                strcat(command, options[j]);
+                strcat(command, " ");
                 j++;
             }
-            j = 0;
-            while (j < i-1) {
-                fprintf(stderr, "option: %s\n", options[j]);
-                j++;
+            options[numOpt-1] = 0;
+
+            if (background) {
+                strcat(command, "&");
             }
-	        execvp(args[0], args);//options);
+            historyCount++;
+            history[historyCount % MAX_HISTORY] = command;
+
+            // by convention, first element is the command
+            // the array must be terminated by a null pointer
+	        execvp(args[0], options);
         }
 	} else if (background == 1) {
         //int status;
