@@ -8,6 +8,13 @@
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 #define MAX_HISTORY 10 /* Max of 10 commands in the history buffer */
+#define CD "cd"
+#define PWD "pwd"
+#define EXIT "exit"
+#define JOBS "jobs"
+#define FG "fg"
+#define HISTORY "history"
+#define R "r"
 
 /**
  * setup() reads in the next command line, separating it into distinct tokens
@@ -72,7 +79,7 @@ void addCommand(char *history[], char command[], int historyCount) {
         for (i = 0; i < MAX_HISTORY - 1; i++) {
             history[i] = history[i + 1];
         }
-        history[MAX_HISTORY - 1] = command;
+        history[MAX_HISTORY - 1] = strdup(command);
     }
 }
 
@@ -112,13 +119,6 @@ int main(void)
     char *args[MAX_LINE+1]; /* command line (of 80) has max of 40 arguments */
     char *history[MAX_HISTORY];
     int historyCount = 0;
-    char cd[] = "cd";
-    char pwd[] = "pwd";
-    char exitStr[] = "exit";
-    char jobs[] = "jobs";
-    char fg[] = "fg";
-    char histStr[] = "history";
-    char rStr[] = "r";
     char command[MAX_LINE+1];
 
     while (1) { /* Program terminates normally inside setup */
@@ -147,9 +147,9 @@ int main(void)
         historyCount++;
         addCommand(history, command, historyCount);
 
-        if (strcmp(args[0], cd) == 0) {
+        if (strcmp(args[0], CD) == 0) {
             chdir(args[1]);
-        } else if (strcmp(args[0], pwd) == 0) {
+        } else if (strcmp(args[0], PWD) == 0) {
             char buf[PATH_MAX];
             getcwd(buf, PATH_MAX);
             if (buf != 0) {
@@ -157,26 +157,26 @@ int main(void)
             } else {
                 printf("Error getting current working directory\n");
             }
-        } else if (strcmp(args[0], exitStr) == 0) {
+        } else if (strcmp(args[0], EXIT) == 0) {
             exit(0);
-        } else if (strcmp(args[0], jobs) == 0) {
+        } else if (strcmp(args[0], JOBS) == 0) {
             
-        } else if (strcmp(args[0], fg) == 0) {
+        } else if (strcmp(args[0], FG) == 0) {
 
-        } else if (strcmp(args[0], histStr) == 0) {
+        } else if (strcmp(args[0], HISTORY) == 0) {
             int i;
             for (i = 0; i < MAX_HISTORY; i++) {
                 int count = (historyCount > MAX_HISTORY) ?
                     (historyCount - MAX_HISTORY + i + 1) : (i + 1);
                 printf(" %d\t%s\n", count, history[i]);
             }
-        } else if (strcmp(args[0], rStr) == 0) {
+        } else if (strcmp(args[0], R) == 0) {
             if (args[1] != 0) {
                 // A specified command
             } else {
                 // The most recent command
-                strcpy(inputBuffer, history[MAX_HISTORY - 1]);
-                setup(inputBuffer, args, &background);
+                //strcpy(inputBuffer, history[MAX_HISTORY - 1]);
+                setup(history[MAX_HISTORY-1], args, &background);
                 runCmd(args, background);
             }
         } else {
