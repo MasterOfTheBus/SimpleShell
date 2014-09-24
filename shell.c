@@ -66,7 +66,42 @@ void setup(char inputBuffer[], char *args[],int *background)
 
 void runCmd(char *args[], int background, char *history[], int *historyCount)
 {
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Only get the actual arguments
+        int i = 0;
+        while (i < MAX_LINE && args[i] != 0) {
+            i++;
+        }
 
+        // save the command to history
+        char command[MAX_LINE + 1];
+        strcpy(command, "");
+
+        int numOpt = (background) ? (i) : (i+1);
+        char *options[numOpt];
+        int j = 0;
+        while (j < i) {
+            options[j] = args[j];
+            strcat(command, options[j]);
+            strcat(command, " ");
+            j++;
+        }
+        options[numOpt-1] = 0;
+
+        if (background) {
+            strcat(command, "&");
+        }
+        *historyCount++;
+        history[*historyCount % MAX_HISTORY] = command;
+
+        // by convention, first element is the command
+        // the array must be terminated by a null pointer
+        execvp(args[0], options);
+    } else if (background == 1) {
+        int status;
+        waitpid(pid, &status, 0);
+    }
 }
 
 int main(void)
@@ -84,73 +119,38 @@ int main(void)
     char histStr[] = "r";
 
     while (1) { /* Program terminates normally inside setup */
-	background = 0;
-	printf(" COMMAND->\n");
-	setup(inputBuffer,args,&background); /* get next command */
-	/* the steps are:
-	   (1) fork a child process using fork()
-	   (2) the child process will invoke execvp()
-	   (3) if background == 1, the parent will wait, 
-	   otherwise returns to the setup() function. */
-	if (strcmp(args[0], cd) == 0) {
-        chdir(args[1]);
-    } else if (strcmp(args[0], pwd) == 0) {
-         char buf[PATH_MAX];
-         getcwd(buf, PATH_MAX);
-         if (buf != 0) {
-            printf("%s\n", buf);
-         } else {
-            printf("Error getting current working directory\n");
-         }
-    } else if (strcmp(args[0], exitStr) == 0) {
-        exit(0);
-    } else if (strcmp(args[0], jobs) == 0) {
+    	background = 0;
+	    printf(" COMMAND->\n");
+	    setup(inputBuffer,args,&background); /* get next command */
+	    /* the steps are:
+	        (1) fork a child process using fork()
+	        (2) the child process will invoke execvp()
+	        (3) if background == 1, the parent will wait, 
+	        otherwise returns to the setup() function. */
+	    if (strcmp(args[0], cd) == 0) {
+            chdir(args[1]);
+        } else if (strcmp(args[0], pwd) == 0) {
+            char buf[PATH_MAX];
+            getcwd(buf, PATH_MAX);
+            if (buf != 0) {
+                printf("%s\n", buf);
+            } else {
+                printf("Error getting current working directory\n");
+            }
+        } else if (strcmp(args[0], exitStr) == 0) {
+            exit(0);
+        } else if (strcmp(args[0], jobs) == 0) {
             
-    } else if (strcmp(args[0], fg) == 0) {
+        } else if (strcmp(args[0], fg) == 0) {
 
-    } else if (strcmp(args[0], histStr) == 0) {
-        if (args[1] != 0) {
+        } else if (strcmp(args[0], histStr) == 0) {
+            if (args[1] != 0) {
                 
+            } else {
+            //    runCmd();
+            }
         } else {
-            runCmd();
+            runCmd(args, background, history, &historyCount);
         }
-    } else {
-        pid_t pid = fork();
-	    if (pid == 0) {
-	        // Only get the actual arguments
-            int i = 0;
-            while (i < MAX_LINE && args[i] != 0) {
-                i++;
-            }
-
-            // save the command to history
-            char command[MAX_LINE + 1];
-            strcpy(command, "");
-
-            int numOpt = (background) ? (i) : (i+1);
-            char *options[numOpt];
-            int j = 0;
-            while (j < i) {
-                options[j] = args[j];
-                strcat(command, options[j]);
-                strcat(command, " ");
-                j++;
-            }
-            options[numOpt-1] = 0;
-
-            if (background) {
-                strcat(command, "&");
-            }
-            historyCount++;
-            history[historyCount % MAX_HISTORY] = command;
-
-            // by convention, first element is the command
-            // the array must be terminated by a null pointer
-	        execvp(args[0], options);
-	    } else if (background == 1) {
-            int status;
-            waitpid(pid, &status, 0);
-	    }
-    }
     }
 }
