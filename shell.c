@@ -7,6 +7,7 @@
 #include <linux/limits.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
+#define MAX_HISTORY 10 /* Max of 10 commands in the history buffer */
 
 /**
  * setup() reads in the next command line, separating it into distinct tokens
@@ -63,12 +64,16 @@ void setup(char inputBuffer[], char *args[],int *background)
     args[ct] = NULL; /* just in case the input line was > 80 */
 } 
 
+void runCmd(char *args[], int background, char *history[], int *historyCount)
+{
+
+}
+
 int main(void)
 {
     char inputBuffer[MAX_LINE]; /* buffer to hold the command entered */
     int background; /* equals 1 if a command is followed by '&' */
     char *args[MAX_LINE+1]; /* command line (of 80) has max of 40 arguments */
-    int MAX_HISTORY = 10;
     char *history[MAX_HISTORY];
     int historyCount = 0;
     char cd[] = "cd";
@@ -76,6 +81,7 @@ int main(void)
     char exitStr[] = "exit";
     char jobs[] = "jobs";
     char fg[] = "fg";
+    char histStr[] = "r";
 
     while (1) { /* Program terminates normally inside setup */
 	background = 0;
@@ -102,46 +108,45 @@ int main(void)
             
     } else if (strcmp(args[0], fg) == 0) {
 
+    } else if (strcmp(args[0], histStr) == 0) {
+        if (args[1] != 0) {
+                
+        } else {
+            runCmd();
+        }
     } else {
         pid_t pid = fork();
 	    if (pid == 0) {
-            if (args[0] == "r") {
-                // history part
-                if (args[1] != 0) {
-                
-                }
-            } else {
-	            // Only get the actual arguments
-                int i = 0;
-                while (i < MAX_LINE && args[i] != 0) {
-                    i++;
-                }
-
-                // save the command to history
-                char command[MAX_LINE + 1];
-                strcpy(command, "");
-
-                int numOpt = (background) ? (i) : (i+1);
-                char *options[numOpt];
-                int j = 0;
-                while (j < i) {
-                    options[j] = args[j];
-                    strcat(command, options[j]);
-                    strcat(command, " ");
-                    j++;
-                }
-                options[numOpt-1] = 0;
-
-                if (background) {
-                    strcat(command, "&");
-                }
-                historyCount++;
-                history[historyCount % MAX_HISTORY] = command;
-
-                // by convention, first element is the command
-                // the array must be terminated by a null pointer
-	            execvp(args[0], options);
+	        // Only get the actual arguments
+            int i = 0;
+            while (i < MAX_LINE && args[i] != 0) {
+                i++;
             }
+
+            // save the command to history
+            char command[MAX_LINE + 1];
+            strcpy(command, "");
+
+            int numOpt = (background) ? (i) : (i+1);
+            char *options[numOpt];
+            int j = 0;
+            while (j < i) {
+                options[j] = args[j];
+                strcat(command, options[j]);
+                strcat(command, " ");
+                j++;
+            }
+            options[numOpt-1] = 0;
+
+            if (background) {
+                strcat(command, "&");
+            }
+            historyCount++;
+            history[historyCount % MAX_HISTORY] = command;
+
+            // by convention, first element is the command
+            // the array must be terminated by a null pointer
+	        execvp(args[0], options);
 	    } else if (background == 1) {
             int status;
             waitpid(pid, &status, 0);
