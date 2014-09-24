@@ -133,20 +133,23 @@ int main(void)
 	    
         // add the command to the history
         // Only get the actual arguments
-        strcpy(command, "");
-        
-        int i = 0;
-        while (i < MAX_LINE && args[i] != 0) {
-            strcat(command, args[i]);
-            strcat(command, " ");
-            i++;
-        }
-        if (background) {
-            strcat(command, "&");
-        }
-        historyCount++;
-        addCommand(history, command, historyCount);
+        if (args[0] != 0) {
+            strcpy(command, "");
 
+            int i = 0;
+            while (i < MAX_LINE && args[i] != 0) {
+                strcat(command, args[i]);
+                strcat(command, " ");
+                i++;
+            }
+            if (background) {
+                strcat(command, "&");
+            }
+            historyCount++;
+            addCommand(history, command, historyCount);
+        } else {
+            continue;
+        }
         if (strcmp(args[0], CD) == 0) {
             chdir(args[1]);
         } else if (strcmp(args[0], PWD) == 0) {
@@ -175,8 +178,11 @@ int main(void)
                 // A specified command
             } else {
                 // The most recent command
-                //strcpy(inputBuffer, history[MAX_HISTORY - 1]);
-                setup(history[MAX_HISTORY-1], args, &background);
+                int index = (historyCount < MAX_HISTORY) ? (historyCount - 1) :
+                    (MAX_HISTORY - 1); 
+                strcpy(command, history[index]);
+                printf("executing r\n");
+                setup(command, args, &background);
                 runCmd(args, background);
             }
         } else {
