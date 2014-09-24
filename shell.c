@@ -21,7 +21,7 @@
  * using whitespace as delimiters. setup() sets the args parameter as a 
  * null-terminated string.
  */
-void setup(char inputBuffer[], char *args[],int *background)
+int setup(char inputBuffer[], char *args[],int *background, int readInput)
 {
     int length, /* # of characters in the command line */
 	i, /* loop index for accessing inputBuffer array */
@@ -29,15 +29,19 @@ void setup(char inputBuffer[], char *args[],int *background)
 	ct; /* index of where to place the next parameter into args[] */
 
     ct = 0;
-
-    /* read what the user enters on the command line */
-    length = read(STDIN_FILENO, inputBuffer, MAX_LINE); 
+    if (readInput) {
+        /* read what the user enters on the command line */
+        length = read(STDIN_FILENO, inputBuffer, MAX_LINE);
+    } else {
+        length = sizeof(inputBuffer) / sizeof(char);
+    }
+    printf("length: %d\n", length);
     start = -1;
     if (length == 0)
 	exit(0); /* ^d was entered, end of user command stream */
     if (length < 0){
 	perror("error reading the command");
-	exit(-1); /* terminate with error code of -1 */
+	return (-1); /* terminate with error code of -1 */
     }
     /* examine every character in the inputBuffer */
     for (i=0;i<length;i++) { 
@@ -69,6 +73,7 @@ void setup(char inputBuffer[], char *args[],int *background)
 	    }
     } 
     args[ct] = NULL; /* just in case the input line was > 80 */
+    return (0);
 } 
 
 void addCommand(char *history[], char command[], int historyCount) {
@@ -124,7 +129,10 @@ int main(void)
     while (1) { /* Program terminates normally inside setup */
     	background = 0;
 	    printf(" COMMAND->\n");
-	    setup(inputBuffer,args,&background); /* get next command */
+        /* get next command */
+	    if(setup(inputBuffer,args,&background,1) != 0) {
+            continue;
+        }
 	    /* the steps are:
 	        (1) fork a child process using fork()
 	        (2) the child process will invoke execvp()
@@ -134,19 +142,21 @@ int main(void)
         // add the command to the history
         // Only get the actual arguments
         if (args[0] != 0) {
-            strcpy(command, "");
+            if (strcmp(args[0], R)) {
+                strcpy(command, "");
 
-            int i = 0;
-            while (i < MAX_LINE && args[i] != 0) {
-                strcat(command, args[i]);
-                strcat(command, " ");
-                i++;
+                int i = 0;
+                while (i < MAX_LINE && args[i] != 0) {
+                    strcat(command, args[i]);
+                    strcat(command, " ");
+                    i++;
+                }
+                if (background) {
+                    strcat(command, "&");
+                }
+                historyCount++;
+                addCommand(history, command, historyCount);
             }
-            if (background) {
-                strcat(command, "&");
-            }
-            historyCount++;
-            addCommand(history, command, historyCount);
         } else {
             continue;
         }
@@ -181,12 +191,15 @@ int main(void)
                 int index = (historyCount < MAX_HISTORY) ? (historyCount - 1) :
                     (MAX_HISTORY - 1); 
                 strcpy(command, history[index]);
-                printf("executing r\n");
-                setup(command, args, &background);
+                historyCount++;
+                addCommand(history, command, historyCount);
+                if (setup(command, args, &background,0) != 0) {
+                    continue;
+                }
+                printf("%s\n", command);
                 runCmd(args, background);
             }
         } else {
-            //str
             runCmd(args, background);
         }
     }
