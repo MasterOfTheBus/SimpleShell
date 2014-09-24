@@ -65,25 +65,14 @@ void setup(char inputBuffer[], char *args[],int *background)
 } 
 
 void addCommand(char *history[], char command[], int historyCount) {
-    fprintf(stderr, "adding %s to history with count %d\n", command, historyCount);
     if (historyCount <= MAX_HISTORY) {
-        fprintf(stderr, "adding to %d\n", historyCount -1);
-    int j;
-    for (j = 0; j < MAX_HISTORY; j++) {
-        fprintf(stderr, "j: %d, %s\n", j, history[j]);
-    }
-        history[historyCount - 1] = command;
+        history[historyCount - 1] = strdup(command);
     } else {
-        fprintf(stderr, "in the else");
         int i;
         for (i = 0; i < MAX_HISTORY - 1; i++) {
             history[i] = history[i + 1];
         }
         history[MAX_HISTORY - 1] = command;
-    }
-    int j;
-    for (j = 0; j < MAX_HISTORY; j++) {
-        fprintf(stderr, "j: %d, %s\n", j, history[j]);
     }
 }
 
@@ -130,7 +119,7 @@ int main(void)
     char fg[] = "fg";
     char histStr[] = "history";
     char rStr[] = "r";
-    char command[MAX_LINE + 1];
+    char command[MAX_LINE+1];
 
     while (1) { /* Program terminates normally inside setup */
     	background = 0;
