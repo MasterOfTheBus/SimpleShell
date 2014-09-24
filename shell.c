@@ -64,7 +64,30 @@ void setup(char inputBuffer[], char *args[],int *background)
     args[ct] = NULL; /* just in case the input line was > 80 */
 } 
 
-void runCmd(char *args[], int background, char *history[], int *historyCount)
+void addCommand(char *history[], char command[], int historyCount) {
+    fprintf(stderr, "adding %s to history with count %d\n", command, historyCount);
+    if (historyCount <= MAX_HISTORY) {
+        fprintf(stderr, "adding to %d\n", historyCount -1);
+    int j;
+    for (j = 0; j < MAX_HISTORY; j++) {
+        fprintf(stderr, "j: %d, %s\n", j, history[j]);
+    }
+        history[historyCount - 1] = command;
+    } else {
+        fprintf(stderr, "in the else");
+        int i;
+        for (i = 0; i < MAX_HISTORY - 1; i++) {
+            history[i] = history[i + 1];
+        }
+        history[MAX_HISTORY - 1] = command;
+    }
+    int j;
+    for (j = 0; j < MAX_HISTORY; j++) {
+        fprintf(stderr, "j: %d, %s\n", j, history[j]);
+    }
+}
+
+void runCmd(char *args[], int background)
 {
     pid_t pid = fork();
     if (pid == 0) {
@@ -75,25 +98,14 @@ void runCmd(char *args[], int background, char *history[], int *historyCount)
         }
 
         // save the command to history
-        char command[MAX_LINE + 1];
-        strcpy(command, "");
-
         int numOpt = (background) ? (i) : (i+1);
         char *options[numOpt];
         int j = 0;
         while (j < i) {
             options[j] = args[j];
-            strcat(command, options[j]);
-            strcat(command, " ");
             j++;
         }
         options[numOpt-1] = 0;
-
-        if (background) {
-            strcat(command, "&");
-        }
-        *historyCount++;
-        history[*historyCount % MAX_HISTORY] = command;
 
         // by convention, first element is the command
         // the array must be terminated by a null pointer
@@ -116,7 +128,9 @@ int main(void)
     char exitStr[] = "exit";
     char jobs[] = "jobs";
     char fg[] = "fg";
-    char histStr[] = "r";
+    char histStr[] = "history";
+    char rStr[] = "r";
+    char command[MAX_LINE + 1];
 
     while (1) { /* Program terminates normally inside setup */
     	background = 0;
@@ -127,7 +141,24 @@ int main(void)
 	        (2) the child process will invoke execvp()
 	        (3) if background == 1, the parent will wait, 
 	        otherwise returns to the setup() function. */
-	    if (strcmp(args[0], cd) == 0) {
+	    
+        // add the command to the history
+        // Only get the actual arguments
+        strcpy(command, "");
+        
+        int i = 0;
+        while (i < MAX_LINE && args[i] != 0) {
+            strcat(command, args[i]);
+            strcat(command, " ");
+            i++;
+        }
+        if (background) {
+            strcat(command, "&");
+        }
+        historyCount++;
+        addCommand(history, command, historyCount);
+
+        if (strcmp(args[0], cd) == 0) {
             chdir(args[1]);
         } else if (strcmp(args[0], pwd) == 0) {
             char buf[PATH_MAX];
@@ -144,13 +175,24 @@ int main(void)
         } else if (strcmp(args[0], fg) == 0) {
 
         } else if (strcmp(args[0], histStr) == 0) {
+            int i;
+            for (i = 0; i < MAX_HISTORY; i++) {
+                int count = (historyCount > MAX_HISTORY) ?
+                    (historyCount - MAX_HISTORY + i + 1) : (i + 1);
+                printf(" %d\t%s\n", count, history[i]);
+            }
+        } else if (strcmp(args[0], rStr) == 0) {
             if (args[1] != 0) {
-                
+                // A specified command
             } else {
-            //    runCmd();
+                // The most recent command
+                strcpy(inputBuffer, history[MAX_HISTORY - 1]);
+                setup(inputBuffer, args, &background);
+                runCmd(args, background);
             }
         } else {
-            runCmd(args, background, history, &historyCount);
+            //str
+            runCmd(args, background);
         }
     }
 }
