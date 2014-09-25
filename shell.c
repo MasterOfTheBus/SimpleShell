@@ -33,9 +33,10 @@ int setup(char inputBuffer[], char *args[],int *background, int readInput)
         /* read what the user enters on the command line */
         length = read(STDIN_FILENO, inputBuffer, MAX_LINE);
     } else {
-        length = sizeof(inputBuffer) / sizeof(char);
+        printf("input: %s\n", inputBuffer);
+        length = strlen(inputBuffer);
+        printf("length: %d\n", length);
     }
-    printf("length: %d\n", length);
     start = -1;
     if (length == 0)
 	exit(0); /* ^d was entered, end of user command stream */
@@ -117,6 +118,47 @@ void runCmd(char *args[], int background)
     }
 }
 
+/*
+ * Return 1 for true and 0 for false
+ */
+int isSystemCall(char *command)
+{
+    if (strcmp(command, CD) == 0 || strcmp(command, PWD) == 0 ||
+        strcmp(command, EXIT) == 0 || strcmp(command, FG) == 0 ||
+        strcmp(command, JOBS) == 0 || strcmp(command, HISTORY) == 0) {
+        return (1);
+    }
+    return (0);
+}
+
+void runSystemCall(char *args[], int historyCount, char *history[])
+{
+    if (strcmp(args[0], CD) == 0){
+        chdir(args[1]);
+    } else if (strcmp(args[0], PWD) == 0) {
+        char buf[PATH_MAX];
+        getcwd(buf, PATH_MAX);
+        if (buf != 0) {
+            printf("%s\n", buf);
+        } else {
+            printf("Error getting current working directory\n");
+        }
+    } else if (strcmp(args[0], EXIT) == 0) {
+        exit(0);
+    } else if (strcmp(args[0], JOBS) == 0) {
+
+    } else if (strcmp(args[0], FG) == 0) {
+
+    } else if (strcmp(args[0], HISTORY) == 0) {
+        int i;
+        for (i = 0; i < MAX_HISTORY; i++) {
+            int count = (historyCount > MAX_HISTORY) ?
+                (historyCount - MAX_HISTORY + i + 1) : (i + 1);
+            printf(" %d\t%s\n", count, history[i]);
+        }
+    }
+}
+
 int main(void)
 {
     char inputBuffer[MAX_LINE]; /* buffer to hold the command entered */
@@ -152,7 +194,7 @@ int main(void)
                     i++;
                 }
                 if (background) {
-                    strcat(command, "&");
+                    command[strlen(command)-1] = '&';
                 }
                 historyCount++;
                 addCommand(history, command, historyCount);
@@ -160,30 +202,7 @@ int main(void)
         } else {
             continue;
         }
-        if (strcmp(args[0], CD) == 0) {
-            chdir(args[1]);
-        } else if (strcmp(args[0], PWD) == 0) {
-            char buf[PATH_MAX];
-            getcwd(buf, PATH_MAX);
-            if (buf != 0) {
-                printf("%s\n", buf);
-            } else {
-                printf("Error getting current working directory\n");
-            }
-        } else if (strcmp(args[0], EXIT) == 0) {
-            exit(0);
-        } else if (strcmp(args[0], JOBS) == 0) {
-            
-        } else if (strcmp(args[0], FG) == 0) {
-
-        } else if (strcmp(args[0], HISTORY) == 0) {
-            int i;
-            for (i = 0; i < MAX_HISTORY; i++) {
-                int count = (historyCount > MAX_HISTORY) ?
-                    (historyCount - MAX_HISTORY + i + 1) : (i + 1);
-                printf(" %d\t%s\n", count, history[i]);
-            }
-        } else if (strcmp(args[0], R) == 0) {
+        if (strcmp(args[0], R) == 0) {
             if (args[1] != 0) {
                 // A specified command
             } else {
@@ -191,14 +210,22 @@ int main(void)
                 int index = (historyCount < MAX_HISTORY) ? (historyCount - 1) :
                     (MAX_HISTORY - 1); 
                 strcpy(command, history[index]);
+                char *tempCmd = strdup(command);
                 historyCount++;
                 addCommand(history, command, historyCount);
                 if (setup(command, args, &background,0) != 0) {
                     continue;
                 }
-                printf("%s\n", command);
+                printf("%s\n", tempCmd);
+                int z = 0;
+                while(args[z] != 0) {
+                    printf("args%d: %s\n",z,args[z]);
+                    z++;
+                }
                 runCmd(args, background);
             }
+        } else if (isSystemCall(args[0])) {
+            runSystemCall(args, historyCount, history);
         } else {
             runCmd(args, background);
         }
