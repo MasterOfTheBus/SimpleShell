@@ -126,21 +126,25 @@ void runCmd(char *args[], int background, char command[], job jobs[],
         // by convention, first element is the command
         // the array must be terminated by a null pointer
         execvp(args[0], options);
-    } else if (background) {
-        int ret = waitpid(pid, &status, WNOHANG);
-        if (ret > 0) {
-            printf("Done");
-        } else if (ret == 0) {
-            job newJob;
-            newJob.id = *jobCount;
-            newJob.command = command;
-            newJob.pid = pid;
-            newJob.status = status;
-            printf("count: %d", *jobCount);
-            printf("[%d] %d\n", newJob.id, newJob.pid);
+    } else {
+        if (background) {
+            int ret = waitpid(pid, &status, WNOHANG);
+            if (ret > 0) {
+                printf("Done");
+            } else if (ret == 0) {
+                job newJob;
+                newJob.id = *jobCount;
+                newJob.command = command;
+                newJob.pid = pid;
+                newJob.status = status;
+                printf("count: %d", *jobCount);
+                printf("[%d] %d\n", newJob.id, newJob.pid);
+            } else {
+                perror("Some error");
+                return;
+            }
         } else {
-            perror("Some error");
-            return;
+            wait(&status);
         }
     }
 }
@@ -282,10 +286,7 @@ int main(void)
         if (isSystemCall(args[0])) {
             runSystemCall(args, historyCount, history, jobs, jobCount);
         } else {
-            printf("job cnt: %d\n", jobCount);
             runCmd(args, background, command, jobs, &jobCount);
-            int status;
-            wait(&status);
         }
     }
 }
