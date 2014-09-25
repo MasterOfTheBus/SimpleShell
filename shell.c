@@ -21,7 +21,7 @@ typedef struct {
     int id;
     pid_t pid;
     char *command;
-    char *status;
+    int status;
 } job;
 
 /**
@@ -100,6 +100,7 @@ void addCommand(char *history[], char command[], int historyCount) {
 void runCmd(char *args[], int background, char command[], job jobs[],
             int *jobCount)
 {
+    int status;
     if (background && *jobCount >= MAX_JOBS) {
         printf("Number of background jobs exceeds the limit");
         return;
@@ -126,15 +127,21 @@ void runCmd(char *args[], int background, char command[], job jobs[],
         // the array must be terminated by a null pointer
         execvp(args[0], options);
     } else if (background) {
-        job newJob;
-        *jobCount++;
-        newJob.id = *jobCount;
-        newJob.command = strdup(command);
-        newJob.pid = pid;
-        jobs[*jobCount-1] = newJob;
-        printf("[%d] %d\n", newJob.id, newJob.pid);
-        int status;
-        waitpid(pid, &status, 0);
+        int ret = waitpid(pid, &status, WNOHANG);
+        if (ret > 0) {
+            printf("Done");
+        } else if (ret == 0) {
+            job newJob;
+            newJob.id = *jobCount;
+            newJob.command = command;
+            newJob.pid = pid;
+            newJob.status = status;
+            printf("count: %d", *jobCount);
+            printf("[%d] %d\n", newJob.id, newJob.pid);
+        } else {
+            perror("Some error");
+            return;
+        }
     }
 }
 
@@ -224,6 +231,7 @@ int main(void)
                 }
                 if (background) {
                     command[strlen(command)-1] = '&';
+                    jobCount++;
                 }
                 historyCount++;
                 addCommand(history, command, historyCount);
@@ -274,6 +282,7 @@ int main(void)
         if (isSystemCall(args[0])) {
             runSystemCall(args, historyCount, history, jobs, jobCount);
         } else {
+            printf("job cnt: %d\n", jobCount);
             runCmd(args, background, command, jobs, &jobCount);
             int status;
             wait(&status);
