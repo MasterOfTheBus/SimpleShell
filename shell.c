@@ -8,6 +8,7 @@
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 #define MAX_HISTORY 10 /* Max of 10 commands in the history buffer */
+#define MAX_JOBS 50 /* Max number of jobs that can be run in the background */
 #define CD "cd"
 #define PWD "pwd"
 #define EXIT "exit"
@@ -18,7 +19,9 @@
 
 typedef struct {
     int id;
+    pid_t pid;
     char *command;
+    char *status;
 } job;
 
 /**
@@ -79,7 +82,7 @@ int setup(char inputBuffer[], char *args[],int *background, int readInput)
 	    }
     } 
     args[ct] = NULL; /* just in case the input line was > 80 */
-    return (0);
+    return (ct+1);
 } 
 
 void addCommand(char *history[], char command[], int historyCount) {
@@ -94,8 +97,13 @@ void addCommand(char *history[], char command[], int historyCount) {
     }
 }
 
-void runCmd(char *args[], int background)
+void runCmd(char *args[], int background, char command[], job jobs[],
+            int *jobCount)
 {
+    if (background && *jobCount >= MAX_JOBS) {
+        printf("Number of background jobs exceeds the limit");
+        return;
+    }
     pid_t pid = fork();
     if (pid == 0) {
         // Only get the actual arguments
@@ -117,7 +125,14 @@ void runCmd(char *args[], int background)
         // by convention, first element is the command
         // the array must be terminated by a null pointer
         execvp(args[0], options);
-    } else if (background == 1) {
+    } else if (background) {
+        job newJob;
+        *jobCount++;
+        newJob.id = *jobCount;
+        newJob.command = strdup(command);
+        newJob.pid = pid;
+        jobs[*jobCount-1] = newJob;
+        printf("[%d] %d\n", newJob.id, newJob.pid);
         int status;
         waitpid(pid, &status, 0);
     }
@@ -136,7 +151,8 @@ int isSystemCall(char *command)
     return (0);
 }
 
-void runSystemCall(char *args[], int historyCount, char *history[])
+void runSystemCall(char *args[], int historyCount, char *history[], job jobs[],
+                   int jobCount)
 {
     if (strcmp(args[0], CD) == 0){
         chdir(args[1]);
@@ -151,7 +167,10 @@ void runSystemCall(char *args[], int historyCount, char *history[])
     } else if (strcmp(args[0], EXIT) == 0) {
         exit(0);
     } else if (strcmp(args[0], JOBS) == 0) {
-
+        int i;
+        for (i = 0; i < jobCount; i++) {
+            printf("[%d] %d\t\t%s\n", i+1, jobs[i].pid, jobs[i].command);
+        }
     } else if (strcmp(args[0], FG) == 0) {
 
     } else if (strcmp(args[0], HISTORY) == 0) {
@@ -173,12 +192,16 @@ int main(void)
     char *history[MAX_HISTORY];
     int historyCount = 0;
     char command[MAX_LINE+1];
+    job jobs[MAX_JOBS];
+    int jobCount = 0;
+    int argsCount = 0;
 
     while (1) { /* Program terminates normally inside setup */
     	background = 0;
 	    printf(" COMMAND->\n");
         /* get next command */
-	    if(setup(inputBuffer,args,&background,1) != 0) {
+        argsCount = setup(inputBuffer,args,&background,1); 
+	    if(argsCount < 0) {
             continue;
         }
 	    /* the steps are:
@@ -249,9 +272,9 @@ int main(void)
             }
         }
         if (isSystemCall(args[0])) {
-            runSystemCall(args, historyCount, history);
+            runSystemCall(args, historyCount, history, jobs, jobCount);
         } else {
-            runCmd(args, background);
+            runCmd(args, background, command, jobs, &jobCount);
             int status;
             wait(&status);
         }
