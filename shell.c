@@ -33,9 +33,9 @@ int setup(char inputBuffer[], char *args[],int *background, int readInput)
         /* read what the user enters on the command line */
         length = read(STDIN_FILENO, inputBuffer, MAX_LINE);
     } else {
-        printf("input: %s\n", inputBuffer);
+        //printf("input: %s\n", inputBuffer);
         length = strlen(inputBuffer);
-        printf("length: %d\n", length);
+        //printf("length: %d\n", length);
     }
     start = -1;
     if (length == 0)
@@ -151,7 +151,8 @@ void runSystemCall(char *args[], int historyCount, char *history[])
 
     } else if (strcmp(args[0], HISTORY) == 0) {
         int i;
-        for (i = 0; i < MAX_HISTORY; i++) {
+        int limit = (historyCount > MAX_HISTORY) ? (MAX_HISTORY) : (historyCount);
+        for (i = 0; i < limit; i++) {
             int count = (historyCount > MAX_HISTORY) ?
                 (historyCount - MAX_HISTORY + i + 1) : (i + 1);
             printf(" %d\t%s\n", count, history[i]);
@@ -203,8 +204,27 @@ int main(void)
             continue;
         }
         if (strcmp(args[0], R) == 0) {
+            printf("args1: %s\n", args[1]);
             if (args[1] != 0) {
                 // A specified command
+                if (strlen(args[1]) != 1) {
+                    printf("Invalid argument; argument must be one character\n");
+                    continue;
+                }
+                int i;
+                int limit = (historyCount > MAX_HISTORY) ? (MAX_HISTORY) :
+                    (historyCount);
+                char tempArg[10];
+                strcpy(tempArg, args[1]);
+                for (i = limit - 1; i >= 0; i--) {
+                    char temp[MAX_LINE+1];
+                    strcpy(temp, history[i]);
+                    if (temp[0] == tempArg[0]) {
+                        strcpy(command, history[i]);
+                        printf("%s\n", command);
+                        break;
+                    }
+                }
             } else {
                 // The most recent command
                 int index = (historyCount < MAX_HISTORY) ? (historyCount - 1) :
@@ -222,7 +242,11 @@ int main(void)
                     printf("args%d: %s\n",z,args[z]);
                     z++;
                 }
-                runCmd(args, background);
+                if (isSystemCall(args[0])) {
+                    runSystemCall(args, historyCount, history);
+                } else {
+                    runCmd(args, background);
+                }
             }
         } else if (isSystemCall(args[0])) {
             runSystemCall(args, historyCount, history);
