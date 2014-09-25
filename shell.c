@@ -16,6 +16,11 @@
 #define HISTORY "history"
 #define R "r"
 
+typedef struct {
+    int id;
+    char *command;
+} job;
+
 /**
  * setup() reads in the next command line, separating it into distinct tokens
  * using whitespace as delimiters. setup() sets the args parameter as a 
@@ -214,7 +219,7 @@ int main(void)
                 int i;
                 int limit = (historyCount > MAX_HISTORY) ? (MAX_HISTORY) :
                     (historyCount);
-                char tempArg[10];
+                char tempArg[5];
                 strcpy(tempArg, args[1]);
                 for (i = limit - 1; i >= 0; i--) {
                     char temp[MAX_LINE+1];
@@ -230,28 +235,25 @@ int main(void)
                 int index = (historyCount < MAX_HISTORY) ? (historyCount - 1) :
                     (MAX_HISTORY - 1); 
                 strcpy(command, history[index]);
-                char *tempCmd = strdup(command);
-                historyCount++;
-                addCommand(history, command, historyCount);
-                if (setup(command, args, &background,0) != 0) {
-                    continue;
-                }
-                printf("%s\n", tempCmd);
-                int z = 0;
-                while(args[z] != 0) {
-                    printf("args%d: %s\n",z,args[z]);
-                    z++;
-                }
-                if (isSystemCall(args[0])) {
-                    runSystemCall(args, historyCount, history);
-                } else {
-                    runCmd(args, background);
-                }
+                printf("%s\n", command);
             }
-        } else if (isSystemCall(args[0])) {
+            historyCount++;
+            addCommand(history, command, historyCount);
+            if (setup(command, args, &background,0) != 0) {
+                continue;
+            }
+            int z = 0;
+            while(args[z] != 0) {
+                printf("args%d: %s\n",z,args[z]);
+                z++;
+            }
+        }
+        if (isSystemCall(args[0])) {
             runSystemCall(args, historyCount, history);
         } else {
             runCmd(args, background);
+            int status;
+            wait(&status);
         }
     }
 }
