@@ -18,10 +18,8 @@
 #define R "r"
 
 typedef struct {
-    int id;
     pid_t pid;
     char *command;
-    int status;
 } job;
 
 /**
@@ -98,10 +96,10 @@ void addCommand(char *history[], char command[], int historyCount) {
 }
 
 void runCmd(char *args[], int background, char command[], job jobs[],
-            int *jobCount)
+            int jobCount)
 {
     int status;
-    if (background && *jobCount >= MAX_JOBS) {
+    if (background && jobCount >= MAX_JOBS) {
         printf("Number of background jobs exceeds the limit");
         return;
     }
@@ -133,12 +131,10 @@ void runCmd(char *args[], int background, char command[], job jobs[],
                 printf("Done");
             } else if (ret == 0) {
                 job newJob;
-                newJob.id = *jobCount;
-                newJob.command = command;
+                newJob.command = strdup(command);
                 newJob.pid = pid;
-                newJob.status = status;
-                printf("count: %d", *jobCount);
-                printf("[%d] %d\n", newJob.id, newJob.pid);
+                jobs[jobCount - 1] = newJob;
+                printf("[%d] %d\n", jobCount, newJob.pid);
             } else {
                 perror("Some error");
                 return;
@@ -156,10 +152,29 @@ int isSystemCall(char *command)
 {
     if (strcmp(command, CD) == 0 || strcmp(command, PWD) == 0 ||
         strcmp(command, EXIT) == 0 || strcmp(command, FG) == 0 ||
-        strcmp(command, JOBS) == 0 || strcmp(command, HISTORY) == 0) {
+        strcmp(command, HISTORY) == 0) {
         return (1);
     }
     return (0);
+}
+
+int displayJobs(job jobs[], int jobCount, int doneOnly) {
+    int i, status, ret, numDone = 0;
+    for (i = 0; i < jobCount; i++) {
+        ret = waitpid(jobs[i].pid, &status, WNOHANG);
+        if (ret == -1) {
+            // only echild error for how this wait is called
+            printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
+            numDone++;
+        } else if (ret == 0) {
+            if (!doneOnly) {
+                printf("[%d] %d Running    %s\n", i+1, jobs[i].pid, jobs[i].command);
+            }
+        } else {
+            printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
+        }
+    }
+    return (numDone);
 }
 
 void runSystemCall(char *args[], int historyCount, char *history[], job jobs[],
@@ -177,11 +192,6 @@ void runSystemCall(char *args[], int historyCount, char *history[], job jobs[],
         }
     } else if (strcmp(args[0], EXIT) == 0) {
         exit(0);
-    } else if (strcmp(args[0], JOBS) == 0) {
-        int i;
-        for (i = 0; i < jobCount; i++) {
-            printf("[%d] %d\t\t%s\n", i+1, jobs[i].pid, jobs[i].command);
-        }
     } else if (strcmp(args[0], FG) == 0) {
 
     } else if (strcmp(args[0], HISTORY) == 0) {
@@ -277,16 +287,22 @@ int main(void)
             if (setup(command, args, &background,0) != 0) {
                 continue;
             }
-            int z = 0;
+            /*int z = 0;
             while(args[z] != 0) {
                 printf("args%d: %s\n",z,args[z]);
                 z++;
-            }
+            }*/
         }
+        int doneOnly = 0;
         if (isSystemCall(args[0])) {
+            doneOnly = 1;
             runSystemCall(args, historyCount, history, jobs, jobCount);
-        } else {
-            runCmd(args, background, command, jobs, &jobCount);
+        } else if (strcmp(args[0], JOBS)) {
+            doneOnly = 1;
+            runCmd(args, background, command, jobs, jobCount);
         }
+        // display finished jobs
+        int finished = displayJobs(jobs, jobCount, doneOnly);
+        jobCount -= finished;
     }
 }
