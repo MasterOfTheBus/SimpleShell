@@ -5,6 +5,7 @@
 #include <wait.h>
 #include <string.h>
 #include <linux/limits.h>
+#include <ctype.h>
 
 #define MAX_LINE 80 /* 80 chars per line, per command, should be enough. */
 #define MAX_HISTORY 10 /* Max of 10 commands in the history buffer */
@@ -140,30 +141,21 @@ void runCmd(char *args[], int argsCount, int background, char command[],
 int isSystemCall(char *command)
 {
     if (strcmp(command, CD) == 0 || strcmp(command, PWD) == 0 ||
-        strcmp(command, EXIT) == 0 || strcmp(command, FG) == 0 ||
-        strcmp(command, HISTORY) == 0) {
+        strcmp(command, EXIT) == 0 || strcmp(command, HISTORY) == 0) {
         return (1);
     }
     return (0);
 }
 
-void removeJob(job jobs[], pid_t pid, int jobCount)
+void removeJob(job jobs[], int jobId, int jobCount)
 {
     int i;
-    int found = 0;
-    for (i = 0; i < jobCount; i++) {
-        if (found) {
-            if (i == jobCount - 1) {
-                jobs[i].command = "\0";
-                jobs[i].pid = -1;
-            } else {
-                jobs[i] = jobs[i+1];
-            }
+    for (i = jobId; i < jobCount; i++) {
+        if (i == jobCount - 1) {
+            jobs[i].command = "\0";
+            jobs[i].pid = -1;
         } else {
-            if (jobs[i].pid = pid) {
-                jobs[i] = jobs[i+1];
-                found = 1;
-            }
+            jobs[i] = jobs[i+1];
         }
     }
 }
@@ -179,7 +171,8 @@ int displayJobs(job jobs[], int jobCount, int doneOnly) {
         } else {
             printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
             numDone++;
-            removeJob(jobs, jobs[i].pid, jobCount);
+            removeJob(jobs, i, jobCount);
+            i--;
         }
     }
     return (numDone);
@@ -199,8 +192,6 @@ void runSystemCall(char *args[], int historyCount, char *history[])
         }
     } else if (strcmp(args[0], EXIT) == 0) {
         exit(0);
-    } else if (strcmp(args[0], FG) == 0) {
-
     } else if (strcmp(args[0], HISTORY) == 0) {
         int i;
         int limit = (historyCount > MAX_HISTORY) ? (MAX_HISTORY) : (historyCount);
@@ -304,6 +295,26 @@ int main(void)
                 printf("args%d: %s\n",z,args[z]);
                 z++;
             }*/
+        } else if (strcmp(args[0], FG) == 0) {
+            int status, index;
+            pid_t pid, ret;
+            if (args[1] != 0) {
+                if (isdigit(args[1])) {
+                    index = atoi(args[1]);
+                    pid = jobs[index].pid;
+                } else {
+                    printf("%s: no such job\n", args[1]);
+                    continue;
+                }
+            } else {
+                index = jobCount - 1;
+                pid = jobs[index].pid; 
+            }
+            ret = waitpid(pid, &status, 0);
+            if (ret == pid) {
+                removeJob(jobs, index, jobCount);
+                jobCount--;
+            }
         }
         int doneOnly = 0;
         if (isSystemCall(args[0])) {
