@@ -164,11 +164,8 @@ int isSystemCall(char *command)
 void removeJob(job jobs[], int jobId, int jobCount)
 {
     int i;
-    for (i = jobId; i < jobCount; i++) {
-        if (i == jobCount - 1) {
-            jobs[i].command = "\0";
-            jobs[i].pid = -1;
-        } else {
+    for (i = jobId; i < jobCount-jobId; i++) {
+        if (i != jobCount - 1) {
             jobs[i] = jobs[i+1];
         }
     }
@@ -186,7 +183,6 @@ int displayJobs(job jobs[], int jobCount, int doneOnly) {
             printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
             numDone++;
             removeJob(jobs, i, jobCount);
-            i--;
         }
     }
     return (numDone);
@@ -335,7 +331,7 @@ int main(void)
         if (isSystemCall(args[0])) {
             doneOnly = 1;
             runSystemCall(args, historyCount, history);
-        } else if (strcmp(args[0], JOBS)) {
+        } else if (strcmp(args[0], JOBS) && strcmp(args[0], FG)) {
             doneOnly = 1;
             runCmd(args, argsCount, background, command, jobs, jobCount);
         }
