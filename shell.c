@@ -99,10 +99,6 @@ void runCmd(char *args[], int argsCount, int background, char command[],
             job jobs[], int jobCount)
 {
     int status;
-    if (background && jobCount >= MAX_JOBS) {
-        printf("Number of background jobs exceeds the limit");
-        return;
-    }
     pid_t pid = fork();
     if (pid == 0) {
         int numOpt = (background) ? (argsCount-1) : (argsCount);
@@ -151,27 +147,45 @@ int isSystemCall(char *command)
     return (0);
 }
 
+void removeJob(job jobs[], pid_t pid, int jobCount)
+{
+    int i;
+    int found = 0;
+    for (i = 0; i < jobCount; i++) {
+        if (found) {
+            if (i == jobCount - 1) {
+                jobs[i].command = "\0";
+                jobs[i].pid = -1;
+            } else {
+                jobs[i] = jobs[i+1];
+            }
+        } else {
+            if (jobs[i].pid = pid) {
+                jobs[i] = jobs[i+1];
+                found = 1;
+            }
+        }
+    }
+}
+
 int displayJobs(job jobs[], int jobCount, int doneOnly) {
     int i, status, ret, numDone = 0;
     for (i = 0; i < jobCount; i++) {
         ret = waitpid(jobs[i].pid, &status, WNOHANG);
-        if (ret == -1) {
-            // only echild error for how this wait is called
-            printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
-            numDone++;
-        } else if (ret == 0) {
+        if (ret == 0) {
             if (!doneOnly) {
                 printf("[%d] %d Running    %s\n", i+1, jobs[i].pid, jobs[i].command);
             }
         } else {
             printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
+            numDone++;
+            removeJob(jobs, jobs[i].pid, jobCount);
         }
     }
     return (numDone);
 }
 
-void runSystemCall(char *args[], int historyCount, char *history[], job jobs[],
-                   int jobCount)
+void runSystemCall(char *args[], int historyCount, char *history[])
 {
     if (strcmp(args[0], CD) == 0){
         chdir(args[1]);
@@ -239,6 +253,11 @@ int main(void)
                 if (background) {
                     command[strlen(command)-1] = '&';
                     jobCount++;
+                    if (background && jobCount >= MAX_JOBS) {
+                        printf("Number of background jobs exceeds the limit");
+                        jobCount--;
+                        continue;
+                    }
                 }
                 historyCount++;
                 addCommand(history, command, historyCount);
@@ -289,7 +308,7 @@ int main(void)
         int doneOnly = 0;
         if (isSystemCall(args[0])) {
             doneOnly = 1;
-            runSystemCall(args, historyCount, history, jobs, jobCount);
+            runSystemCall(args, historyCount, history);
         } else if (strcmp(args[0], JOBS)) {
             doneOnly = 1;
             runCmd(args, argsCount, background, command, jobs, jobCount);
