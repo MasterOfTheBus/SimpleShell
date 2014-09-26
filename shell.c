@@ -253,12 +253,6 @@ int main(void)
                 }
                 if (background) {
                     command[strlen(command)-1] = '&';
-                    jobCount++;
-                    if (background && jobCount >= MAX_JOBS) {
-                        printf("Number of background jobs exceeds the limit");
-                        jobCount--;
-                        continue;
-                    }
                 }
                 historyCount++;
                 addCommand(history, command, historyCount);
@@ -296,16 +290,17 @@ int main(void)
             }
             historyCount++;
             addCommand(history, command, historyCount);
+            // add the \n to signify end of command
+            strcat(command, "\n");
             argsCount = setup(command, args, &background,0);
             if (argsCount == -1) {
                 continue;
             }
-            /*int z = 0;
-            while(args[z] != 0) {
-                printf("args%d: %s\n",z,args[z]);
-                z++;
-            }*/
         } else if (strcmp(args[0], FG) == 0) {
+            if (jobCount == 0) {
+                printf("No background processes");
+                continue;
+            }
             int status, index;
             pid_t pid, ret;
             if (args[1] != 0) {
@@ -328,6 +323,14 @@ int main(void)
             }
         }
         int doneOnly = 0;
+        if (background) {
+            jobCount++;
+            if (jobCount >= MAX_JOBS) {
+                printf("Number of background jobs exceeds the limit");
+                jobCount--;
+                continue;
+            }
+        }
         if (isSystemCall(args[0])) {
             doneOnly = 1;
             runSystemCall(args, historyCount, history);
