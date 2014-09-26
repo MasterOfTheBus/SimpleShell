@@ -95,8 +95,8 @@ void addCommand(char *history[], char command[], int historyCount) {
     }
 }
 
-void runCmd(char *args[], int background, char command[], job jobs[],
-            int jobCount)
+void runCmd(char *args[], int argsCount, int background, char command[],
+            job jobs[], int jobCount)
 {
     int status;
     if (background && jobCount >= MAX_JOBS) {
@@ -105,17 +105,10 @@ void runCmd(char *args[], int background, char command[], job jobs[],
     }
     pid_t pid = fork();
     if (pid == 0) {
-        // Only get the actual arguments
-        int i = 0;
-        while (i < MAX_LINE && args[i] != 0) {
-            i++;
-        }
-
-        // save the command to history
-        int numOpt = (background) ? (i) : (i+1);
+        int numOpt = (background) ? (argsCount-1) : (argsCount);
         char *options[numOpt];
         int j = 0;
-        while (j < i) {
+        while (j < argsCount) {
             options[j] = args[j];
             j++;
         }
@@ -222,7 +215,7 @@ int main(void)
 	    printf(" COMMAND->\n");
         /* get next command */
         argsCount = setup(inputBuffer,args,&background,1); 
-	    if(argsCount < 0) {
+	    if(argsCount == -1) {
             continue;
         }
 	    /* the steps are:
@@ -238,7 +231,7 @@ int main(void)
                 strcpy(command, "");
 
                 int i = 0;
-                while (i < MAX_LINE && args[i] != 0) {
+                while (i < argsCount && args[i] != 0) {
                     strcat(command, args[i]);
                     strcat(command, " ");
                     i++;
@@ -254,7 +247,6 @@ int main(void)
             continue;
         }
         if (strcmp(args[0], R) == 0) {
-            printf("args1: %s\n", args[1]);
             if (args[1] != 0) {
                 // A specified command
                 if (strlen(args[1]) != 1) {
@@ -284,7 +276,8 @@ int main(void)
             }
             historyCount++;
             addCommand(history, command, historyCount);
-            if (setup(command, args, &background,0) != 0) {
+            argsCount = setup(command, args, &background,0);
+            if (argsCount == -1) {
                 continue;
             }
             /*int z = 0;
@@ -299,7 +292,7 @@ int main(void)
             runSystemCall(args, historyCount, history, jobs, jobCount);
         } else if (strcmp(args[0], JOBS)) {
             doneOnly = 1;
-            runCmd(args, background, command, jobs, jobCount);
+            runCmd(args, argsCount, background, command, jobs, jobCount);
         }
         // display finished jobs
         int finished = displayJobs(jobs, jobCount, doneOnly);
