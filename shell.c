@@ -23,6 +23,20 @@ typedef struct {
     char *command;
 } job;
 
+int isNumber(char *arg)
+{
+    int length = strlen(arg);
+    char str[length];
+    strcpy(str, arg);
+    int i;
+    for (i = 0; i < length; i++) {
+        if (!isdigit(str[i])) {
+            return (0);
+        }
+    }
+    return (1);
+}
+
 /**
  * setup() reads in the next command line, separating it into distinct tokens
  * using whitespace as delimiters. setup() sets the args parameter as a 
@@ -299,8 +313,8 @@ int main(void)
             int status, index;
             pid_t pid, ret;
             if (args[1] != 0) {
-                if (isdigit(args[1])) {
-                    index = atoi(args[1]);
+                if (isNumber(args[1])) {
+                    index = atoi(args[1]) - 1;
                     pid = jobs[index].pid;
                 } else {
                     printf("%s: no such job\n", args[1]);
@@ -310,6 +324,7 @@ int main(void)
                 index = jobCount - 1;
                 pid = jobs[index].pid; 
             }
+            printf("%s\n", jobs[index].command);
             ret = waitpid(pid, &status, 0);
             if (ret == pid) {
                 removeJob(jobs, index, jobCount);
