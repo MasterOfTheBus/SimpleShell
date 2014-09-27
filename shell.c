@@ -174,13 +174,21 @@ void removeJob(job jobs[], int jobId, int jobCount)
 int displayJobs(job jobs[], int jobCount, int doneOnly) {
     int i, status, ret, numDone = 0;
     for (i = 0; i < jobCount; i++) {
+        char *symbol;
+        if (i == jobCount - 1) {
+            symbol = "+";
+        } else if (i == jobCount - 2) {
+            symbol = "-";
+        } else {
+            symbol = " ";
+        }
         ret = waitpid(jobs[i].pid, &status, WNOHANG);
         if (ret == 0) {
             if (!doneOnly) {
-                printf("[%d] %d Running    %s\n", i+1, jobs[i].pid, jobs[i].command);
+                printf("[%d]%s %d Running    %s\n", i+1, symbol, jobs[i].pid, jobs[i].command);
             }
         } else {
-            printf("[%d] %d Done    %s\n", i+1, jobs[i].pid, jobs[i].command);
+            printf("[%d]%s %d Done    %s\n", i+1, symbol, jobs[i].pid, jobs[i].command);
             numDone++;
             removeJob(jobs, i, jobCount);
         }
@@ -305,7 +313,7 @@ int main(void)
             }
         } else if (strcmp(args[0], FG) == 0) {
             if (jobCount == 0) {
-                printf("No background processes");
+                printf("no such job\n");
                 continue;
             }
             int status, index;
@@ -314,14 +322,26 @@ int main(void)
                 if (isNumber(args[1])) {
                     index = atoi(args[1]) - 1;
                     pid = jobs[index].pid;
+                } else if (strcmp(args[1], "+")) {
+                    index = jobCount - 2;
+                    if (index < 0) {
+                        printf("%s: no such job\n", args[1]);
+                        continue;
+                    }
+                } else if (strcmp(args[1], "-")) {
+                    index = jobCount - 1;
+                    if (index < 0) {
+                        printf("%s: no such job\n", args[1]);
+                        continue;
+                    }
                 } else {
                     printf("%s: no such job\n", args[1]);
                     continue;
                 }
             } else {
                 index = jobCount - 1;
-                pid = jobs[index].pid; 
             }
+            pid = jobs[index].pid;
             printf("%s\n", jobs[index].command);
             ret = waitpid(pid, &status, 0);
             if (ret == pid) {
