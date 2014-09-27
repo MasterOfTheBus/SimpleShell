@@ -288,17 +288,19 @@ int main(void)
                 strcpy(command, history[index]);
                 printf("%s\n", command);
             }
-            historyCount++;
-            addCommand(history, command, historyCount);
+            char *tempCmd = strdup(command);
             // add the \n to signify end of command
             strcat(command, "\n");
             argsCount = setup(command, args, &background,0);
             if (argsCount == -1) {
                 continue;
             }
+            strcpy(command, tempCmd);
+            historyCount++;
+            addCommand(history, command, historyCount);
         } else if (strcmp(args[0], FG) == 0) {
             if (jobCount == 0) {
-                printf("No background processes");
+                printf("No background processes\n");
                 continue;
             }
             int status, index;
