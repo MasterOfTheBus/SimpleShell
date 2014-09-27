@@ -213,6 +213,21 @@ void runSystemCall(char *args[], int historyCount, char *history[])
     }
 }
 
+void constructCmd(char command[], char *args[], int argsCount, int background)
+{
+    strcpy(command, "");
+
+    int i = 0;
+    while (i < argsCount && args[i] != 0) {
+        strcat(command, args[i]);
+        strcat(command, " ");
+        i++;
+    }
+    if (background) {
+        command[strlen(command)-1] = '&';
+    }
+}
+
 int main(void)
 {
     char inputBuffer[MAX_LINE]; /* buffer to hold the command entered */
@@ -243,17 +258,7 @@ int main(void)
         // Only get the actual arguments
         if (args[0] != 0) {
             if (strcmp(args[0], R)) {
-                strcpy(command, "");
-
-                int i = 0;
-                while (i < argsCount && args[i] != 0) {
-                    strcat(command, args[i]);
-                    strcat(command, " ");
-                    i++;
-                }
-                if (background) {
-                    command[strlen(command)-1] = '&';
-                }
+                constructCmd(command, args, argsCount, background);
                 historyCount++;
                 addCommand(history, command, historyCount);
             }
@@ -290,9 +295,11 @@ int main(void)
             }
             historyCount++;
             addCommand(history, command, historyCount);
+            char temp[MAX_LINE+1];
+            strcpy(temp, command);
             // add the \n to signify end of command
-            strcat(command, "\n");
-            argsCount = setup(command, args, &background,0);
+            strcat(temp, "\n");
+            argsCount = setup(temp, args, &background,0);
             if (argsCount == -1) {
                 continue;
             }
